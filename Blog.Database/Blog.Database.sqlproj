@@ -64,7 +64,6 @@
     <Folder Include="dbo\Tables\" />
   </ItemGroup>
   <ItemGroup>
-    <Build Include="dbo\Tables\__EFMigrationsHistory.sql" />
     <Build Include="dbo\Tables\Blogs.sql" />
     <Build Include="dbo\Tables\Posts.sql" />
   </ItemGroup>

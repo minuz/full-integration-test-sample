@@ -4,9 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using NJsonSchema;
-using NSwag.AspNetCore;
-using System.Reflection;
 
 namespace Blog.Api
 {
@@ -39,11 +36,6 @@ namespace Blog.Api
             }
 
             app.UseStaticFiles();
-            app.UseSwaggerUi(typeof(Startup).GetTypeInfo().Assembly, settings =>
-            {
-                settings.GeneratorSettings.DefaultPropertyNameHandling = PropertyNameHandling.CamelCase;
-            });
-
             app.UseMvc();
         }
     }
