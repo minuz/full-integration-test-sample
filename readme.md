@@ -27,7 +27,7 @@ To use this library
 
 The second key goal was to run the integration tests against a real database. Throughout my years of development, I often see teams creating a base database and creating backups and within the integration tests, restore this backup and run the tests against it.
 
-Althought it is a viable solution, it also carries a lot of effort to maintain the database, specially when the product is on active development of new functionalities and therefore, it's likely the database schema would have constant changes over time. This implies that every time there's a change on the db structure, one would have to upgrade the database, create a new backup file and modify possible changes on the initial seed data.
+Althought it is a viable solution, it also carries a lot of effort to maintain the database, specially when the product is on active development of new functionalities and therefore, it's likely to have many schema changes over time. As a consequence, every time there's a change on the db structure, one would have to upgrade the database, create a new backup file and handle changes on the initial seed data.
 
 We wanted to eliminate that!
 
@@ -115,7 +115,7 @@ In order to do that, we need to leverage the usage of `ITestCollectionOrderer`. 
     }
 ```
 
-> Note: Using a custom attribute makes it easier to order things.
+> Note: Using a simple custom attribute makes it easier to order things.
 
 ```csharp
     internal class CollectionOrderAttribute: Attribute
@@ -129,13 +129,11 @@ In order to do that, we need to leverage the usage of `ITestCollectionOrderer`. 
     }
 ```
 
-With that in place, we can create a fixture that will be responsible for the following:
-
 ### The Bootstrap test class concept
 
-Seed data is often one the biggest challenges as it serves as the base for all tests. Along with this test data, if one is not careful, you may end up with dirty data that can disrupt other tests unintentially and therefore, our team chose to create a set of tests that beyond assessing the logic of the code, it has the purpose to populate the initial data that will be shared across the entire test suite.
+Seed data is often one the biggest challenges as it serves as the base for all tests. Along with this test data, if one is not careful, one may end up with dirty data that can disrupt other tests unintentially and therefore, our team chose to create a set of tests that beyond assessing the logic of the code, it has the purpose to populate the initial data that will be shared across the entire test suite.
 
-One way to deal with this is create a dedicated fixture that should run before any other test and this should be part of its own `collection`. 
+One way to deal with this is create a dedicated fixture that should run before any other test and this should be part of its own `collection`.
 
 ``` csharp
     [CollectionDefinition(nameof(BootstrapCollection))]
@@ -195,3 +193,16 @@ The `IntegrationTestFixture` has the purpose of:
 * Stop the temp database
 * Delete the temp instance
 * Destroy the temp directory so it eliminate the copy of the `bootstrap.mdf`.
+
+
+``` mermaid
+
+    graph TB
+
+    A[Square Rect] -- Link text --> B((Circle))
+    A --> C(Round Rect)
+    B --> D{Rhombus}
+    C --> D
+
+
+```
