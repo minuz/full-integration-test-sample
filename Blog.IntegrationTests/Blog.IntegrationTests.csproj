@@ -26,4 +26,8 @@
     <ProjectReference Include="..\Blog.Api\Blog.Api.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Fixtures\" />
+  </ItemGroup>
+
 </Project>

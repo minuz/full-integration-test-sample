@@ -57,9 +57,9 @@ The result should be similar to the following.
 ![Imported database](Assets/Images/imported-db.png)
 You will notice that SQL Server automaticatically generated the sql scripts to create the tables within your database. It will cater for everything, including `Functions`, `Stored Procedures`,`Constraints`, `Triggers`, etc.
 
-This project is now compilable and the result of it is a dacpac file as highlighted on the image abobe.
+This project is now compilable and the result of it is a dacpac file as highlighted on the above image.
 
-Now we are ready to consume this within our Integration Tests and you can go further and use this project to actually manage the database structure for future deployments. But should be another post =)
+Now we are ready to consume it within our Integration Tests and you can go further and use this project to actually manage the database structure for future deployments. This is an entire subject on its own =)
 
 ## Leveraging LocalDb
 
@@ -80,7 +80,7 @@ Ok, so now we have the core concepts in place and what we want from this Integra
 First, based on the shared context from xUnit, we will create the database and populate the seed data that can be used accross the entire Integration Suite.
 In order to do that, we need to leverage the usage of `ITestCollectionOrderer`. This will allow us to order which test class will run first.
 
-```java
+```csharp
     public class CollectionOrderer: ITestCollectionOrderer
     {
         public const string TypeName = "IntegrationTests.Orderers.CollectionOrderer";
@@ -117,7 +117,7 @@ In order to do that, we need to leverage the usage of `ITestCollectionOrderer`. 
 
 > Note: Using a custom attribute makes it easier to order things.
 
-```java
+```csharp
     internal class CollectionOrderAttribute: Attribute
     {
         public CollectionOrderAttribute(int order)
@@ -131,64 +131,67 @@ In order to do that, we need to leverage the usage of `ITestCollectionOrderer`. 
 
 With that in place, we can create a fixture that will be responsible for the following:
 
-### Test Setup
+### The Bootstrap test class concept
 
-* Create a database instance using LocalDb
-* Deploy the database using DacPac
-* Init the server host
+Seed data is often one the biggest challenges as it serves as the base for all tests. Along with this test data, if one is not careful, you may end up with dirty data that can disrupt other tests unintentially and therefore, our team chose to create a set of tests that beyond assessing the logic of the code, it has the purpose to populate the initial data that will be shared across the entire test suite.
 
-### Test Cleanup
+One way to deal with this is create a dedicated fixture that should run before any other test and this should be part of its own `collection`. 
 
-* Detach the database mdf with seed data
-* Copy the mdf to a separate location to allow isolation for each class
-
-``` java
-/// <summary>
-    /// Base class that inherits from <see cref="Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory{TEntryPoint}"/>
-    /// </summary>
-    internal abstract class AppFactory : WebApplicationFactory<Startup>
+``` csharp
+    [CollectionDefinition(nameof(BootstrapCollection))]
+    [CollectionOrder(0)]
+    public class BootstrapCollection : ICollectionFixture<BootstrapFixture>
     {
-        /// <summary>
-        /// Gets or sets the path of the Sql Local Db external process.
-        /// </summary>
-        protected string SqlLocalDb { get; set; }
+    }
 
-        /// <summary>
-        /// Gets or sets the unique Sql Instance Name set during the runtime on the constructor of each fixture, allowing us to have complete isolation of
-        /// the database for each test class. Essential to prevent dirty data that may cause your Integration Tests to be flaky due to possible unwanted data.
-        /// </summary>
-        protected string SqlInstanceName { get; set; }
-
-        /// <summary>
-        /// Gets or sets the connection string based on the individual test class.
-        /// </summary>
-        public static string CurrentConnectionString { get; set; }
-
-        /// <summary>
-        /// Overriding the configure here allows you to modify settings on the server host as necessary for you application. 
-        /// In this sample, we are simply overriding the connection string for the database so EntityFramework and the <see cref="DbContext"/> starts against our LocalDb Instance.
-        /// </summary>
-        /// <param name="builder"></param>
-        protected override void ConfigureWebHost(IWebHostBuilder builder)
-        {
-            base.ConfigureWebHost(builder);
-            builder.ConfigureServices(services =>
-            {
-                services.AddDbContext<BloggingContext>(opt => opt.UseSqlServer(CurrentConnectionString, b => b.MigrationsAssembly("Blog.Api")));
-            });
-        }
-
-        /// <summary>
-        /// WebHost builder to be invoked by the test suite during run time. Essentially it is initializing the Api in a similar way you it would
-        /// normally being executed.
-        /// </summary>
-        /// <returns></returns>
-        protected override IWebHostBuilder CreateWebHostBuilder()
-        {
-            // This creates the Builder that can be similar to your CreateWebHostBuilder from your API. Program.cs
-            // It also ensures you are testing precisely how your application works. 
-            return Program.CreateWebHostBuilder(Array.Empty<string>());
-        }
+    [CollectionDefinition(nameof(IntegrationTestCollection))]
+    [CollectionOrder(1)]
+    public class IntegrationTestCollection : ICollectionFixture<IntegrationTestFixture>
+    {
     }
 ```
 
+> NOTE: As per **xUnit** documentation, the collection classes don't have any sort of logic. Their purpose is to order the collection, but still is necessary to create the concrete implementation of the **xUnit** interface `ICollectionFixture<TFixture>`.
+
+The key point here is to attach specific fixtures to the collections and remember the following:
+
+* The collections will be sorted prior execution of any test
+* The fixture`s constructor will run at the beginning of the first class attached to the collection.
+* Sadly, you cannot order the classes to run within a collection.
+* The fixture`s dispose will run at the end of the collection execution. 
+
+On the above snippet, the `BootstrapCollection` will run first and will only have one test class attached to it.
+Every other test class will be part of the `IntegrationTestCollection` and should be executed in isolation.
+
+As you can notice, they both have different fixtures attached to it.
+
+#### BootstrapFixture
+
+The bootstrap fixture has the purpose of:
+
+##### Setup
+
+* Create a base LocalDb instance
+* Create a blank database
+* Deploy the DacPac with the base database schema
+  
+##### Clean up
+
+* Detach the `.mdf` of the database with all seed data
+* Copy the `.mdf` to a location where the other classes can pickup and re-use it.
+
+#### IntegrationTestFixture
+
+The `IntegrationTestFixture` has the purpose of:
+
+##### Setup
+
+* Make a copy of the `bootstrap.mdf`
+* Create a new temp instance on the LocalDb
+* Attach the copy of the `bootstrap.mdf`
+  
+##### Clean up
+
+* Stop the temp database
+* Delete the temp instance
+* Destroy the temp directory so it eliminate the copy of the `bootstrap.mdf`.
